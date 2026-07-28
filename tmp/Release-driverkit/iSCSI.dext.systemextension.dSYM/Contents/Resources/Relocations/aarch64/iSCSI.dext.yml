@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/yangbao/Applications/iSCSIInitiator/tmp/Release-driverkit/iSCSI.dext.systemextension/iSCSI.dext'
+relocations:     []
+...

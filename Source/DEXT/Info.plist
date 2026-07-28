@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.github.iscsi-osx.iSCSIInitiator.dext</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>iSCSI Initiator DEXT</string>
+    <key>CFBundlePackageType</key>
+    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>IOKitPersonalities</key>
+    <dict>
+        <key>iSCSIVirtualHBA</key>
+        <dict>
+            <key>CFBundleIdentifier</key>
+            <string>com.github.iscsi-osx.iSCSIInitiator.dext</string>
+            <key>IOClass</key>
+            <string>iSCSIDextHBA</string>
+            <key>IOProviderClass</key>
+            <string>IOUserResources</string>
+            <key>IOMatchCategory</key>
+            <string>com.github.iscsi-osx.iSCSIInitiator</string>
+            <key>IOResourceMatch</key>
+            <string>IOKit</string>
+            <key>IOMaximumSegmentCountRead</key>
+            <integer>512</integer>
+            <key>IOMaximumSegmentCountWrite</key>
+            <integer>512</integer>
+            <key>IOMaximumSegmentByteCountRead</key>
+            <integer>2048</integer>
+            <key>IOMaximumSegmentByteCountWrite</key>
+            <integer>2048</integer>
+            <key>Protocol Characteristics</key>
+            <dict>
+                <key>Physical Interconnect</key>
+                <string>iSCSI</string>
+                <key>Physical Interconnect Location</key>
+                <string>External</string>
+            </dict>
+            <!-- User client properties for IOService::Create in NewUserClient -->
+            <key>iSCSIDextUserClient</key>
+            <dict>
+                <key>IOClass</key>
+                <string>IOUserUserClient</string>
+                <key>IOUserClass</key>
+                <string>iSCSIDextUserClient</string>
+            </dict>
+        </dict>
+    </dict>
+    <key>OSBundleLibraries</key>
+    <dict>
+        <key>com.apple.driverkit.SCSIControllerDriverKit</key>
+        <string>1.0</string>
+        <key>com.apple.driverkit.DriverKit</key>
+        <string>1.0</string>
+    </dict>
+</dict>
+</plist>
