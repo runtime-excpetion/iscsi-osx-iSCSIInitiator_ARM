@@ -716,6 +716,10 @@ errno_t iSCSIDaemonPreferencesIOUnlockAndSync(iSCSIDaemonHandle handle,
     
     if(preferences) {
         preferencesData = iSCSIPreferencesCreateData(preferences);
+        if(!preferencesData) {
+            fprintf(stderr, "iSCSIDaemonPreferencesIOUnlockAndSync: failed to serialize preferences\n");
+            return EIO;
+        }
         cmd.preferencesLength = (UInt32)CFDataGetLength(preferencesData);
     }
     else

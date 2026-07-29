@@ -142,10 +142,10 @@ echo "=== Verification ==="
 
 # Verify DEXT binary if built
 if [ "$DEXT_BUILD_OK" = true ]; then
-    DEXT_BINARY=$(find ~/Library/Developer/Xcode/DerivedData -name "iSCSI.dext" \
-        -path "*/Products/Debug/*" -type d 2>/dev/null | head -1)
+    DEXT_BINARY=$(find ~/Library/Developer/Xcode/DerivedData -name "iSCSI.dext.systemextension" \
+        -path "*/Products/Debug-driverkit/*" -type d 2>/dev/null | head -1)
     if [ -n "$DEXT_BINARY" ]; then
-        DEXT_EXEC="$DEXT_BINARY/Contents/MacOS/iSCSI.dext"
+        DEXT_EXEC="$DEXT_BINARY/iSCSI.dext"
         if [ -f "$DEXT_EXEC" ]; then
             echo "✓ iSCSI.dext: $DEXT_EXEC ($(stat -f%z "$DEXT_EXEC") bytes)"
         else

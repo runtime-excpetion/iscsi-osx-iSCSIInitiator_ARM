@@ -175,7 +175,7 @@ void iSCSINegotiateBuildSWDictCommon(iSCSISessionConfigRef sessCfg,
     // recovery level specified by the target.  If the value was invalid, then
     // use the RFC3720 default value of session-level instead.
     enum iSCSIErrorRecoveryLevels errorRecoveryLevel = iSCSISessionConfigGetErrorRecoveryLevel(sessCfg);
-    
+
     switch (errorRecoveryLevel) {
         case kiSCSIErrorRecoverySession:
             value = kRFC3720_Value_ErrorRecoveryLevelSession;
@@ -190,6 +190,11 @@ void iSCSINegotiateBuildSWDictCommon(iSCSISessionConfigRef sessCfg,
             value = kRFC3720_Value_ErrorRecoveryLevelSession;
             break;
     }
+
+    // Guard against NULL arguments which would cause SIGSEGV in CFDictionaryAddValue
+    if(!sessCmd || !kRFC3720_Key_ErrorRecoveryLevel || !value)
+        return;
+
     CFDictionaryAddValue(sessCmd,kRFC3720_Key_ErrorRecoveryLevel,value);
 }
 

@@ -45,12 +45,9 @@
 #include <assert.h>
 
 // Debug logging macro: writes to stderr and /tmp/iscsid-debug.log
-// Using a macro to avoid sandbox issues with different log destinations
-#define ISCSID_LOG(fmt, ...) do { \
-    fprintf(stderr, "iscsid: " fmt "\n", ##__VA_ARGS__); \
-    FILE *__dl = fopen("/tmp/iscsid-debug.log", "a"); \
-    if(__dl) { fprintf(__dl, "iscsid: " fmt "\n", ##__VA_ARGS__); fclose(__dl); } \
-} while(0)
+// Diagnostic logging macro for iscsid daemon
+#define ISCSID_LOG(fmt, ...) \
+    fprintf(stderr, "iscsid: " fmt "\n", ##__VA_ARGS__)
 #include <pthread.h>
 
 // Foundation includes
@@ -1576,21 +1573,32 @@ errno_t iSCSIDPreferencesIOUnlockAndSync(int fd,iSCSIDMsgPreferencesIOUnlockAndS
     // Verify that the client is authorized for the operation
     CFDataRef preferencesData = NULL;
     errno_t error = iSCSIDaemonRecvMsg(fd,0,&preferencesData,cmd->preferencesLength,NULL);
-    
+
+    fprintf(stderr, "iscsid: UnlockAndSync: recvMsg error=%d, preferencesLength=%u, preferencesData=%p\n",
+            error, cmd->preferencesLength, (void*)preferencesData);
+
     iSCSIPreferencesRef preferencesToSync = NULL;
-    
+
     if(preferencesData) {
         preferencesToSync = iSCSIPreferencesCreateWithData(preferencesData);
+        fprintf(stderr, "iscsid: UnlockAndSync: preferencesToSync=%p\n", (void*)preferencesToSync);
         CFRelease(preferencesData);
     }
-    
+
     // If no errors and the daemon was previously locked out for sync
-    if(!error && preferencesToSync && pthread_mutex_trylock(&preferencesMutex))
+    int trylockResult = pthread_mutex_trylock(&preferencesMutex);
+    fprintf(stderr, "iscsid: UnlockAndSync: !error=%d, prefsToSync=%p, trylock=%d\n",
+            !error, (void*)preferencesToSync, trylockResult);
+    if(!error && preferencesToSync && trylockResult)
     {
+        fprintf(stderr, "iscsid: UnlockAndSync: SYNCING preferences to disk\n");
         iSCSIPreferencesSynchronzeAppValues(preferencesToSync);
         iSCSIPreferencesUpdateWithAppValues(preferences);
     }
-    
+    else {
+        fprintf(stderr, "iscsid: UnlockAndSync: SKIPPING sync\n");
+    }
+
     pthread_mutex_unlock(&preferencesMutex);
     
     if(preferencesToSync)

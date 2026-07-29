@@ -609,9 +609,10 @@ iSCSIMutableSessionConfigRef iSCSISessionConfigCreateMutableCopy(iSCSISessionCon
 /*! Gets the error recovery level associated with a target (session). */
 enum iSCSIErrorRecoveryLevels iSCSISessionConfigGetErrorRecoveryLevel(iSCSISessionConfigRef target)
 {
-    UInt8 errorRecoveryLevel = 0;
+    int errorRecoveryLevel = 0;
     CFNumberRef errorRecLevelNum = CFDictionaryGetValue(target,kiSCSISessionConfigErrorRecoveryKey);
-    CFNumberGetValue(errorRecLevelNum,kCFNumberIntType,&errorRecoveryLevel);
+    if(errorRecLevelNum)
+        CFNumberGetValue(errorRecLevelNum,kCFNumberIntType,&errorRecoveryLevel);
     return (enum iSCSIErrorRecoveryLevels)errorRecoveryLevel;
 }
 
@@ -627,9 +628,12 @@ void iSCSISessionConfigSetErrorRecoveryLevel(iSCSIMutableSessionConfigRef target
 /*! Gets the target portal group tag. */
 TargetPortalGroupTag iSCSISessionConfigGetTargetPortalGroupTag(iSCSISessionConfigRef target)
 {
-    TargetPortalGroupTag targetPortalGroupTag = 0;
+    // Use int to avoid buffer overflow: TargetPortalGroupTag is UInt16 (2 bytes),
+    // but kCFNumberIntType writes 4 bytes (sizeof(int)).
+    int targetPortalGroupTag = 0;
     CFNumberRef targetPortalGroupTagNum = CFDictionaryGetValue(target,kiSCSISessionConfigPortalGroupTagKey);
-    CFNumberGetValue(targetPortalGroupTagNum,kCFNumberIntType,&targetPortalGroupTag);
+    if(targetPortalGroupTagNum)
+        CFNumberGetValue(targetPortalGroupTagNum,kCFNumberIntType,&targetPortalGroupTag);
     return (TargetPortalGroupTag)targetPortalGroupTag;
 }
 
@@ -647,8 +651,9 @@ UInt32 iSCSISessionConfigGetMaxConnections(iSCSISessionConfigRef target)
 {
     UInt32 maxConnections = 0;
     CFNumberRef maxConnectionsNum = CFDictionaryGetValue(target,kiSCSISessionConfigMaxConnectionsKey);
-    CFNumberGetValue(maxConnectionsNum,kCFNumberIntType,&maxConnections);
-    return (UInt32)maxConnections;
+    if(maxConnectionsNum)
+        CFNumberGetValue(maxConnectionsNum,kCFNumberSInt32Type,&maxConnections);
+    return maxConnections;
 }
 
 /*! Sets the maximum number of connections. */
@@ -744,10 +749,16 @@ iSCSIMutableConnectionConfigRef iSCSIConnectionConfigCreateMutableCopy(iSCSIConn
  *  @return the type of digest to use. */
 enum iSCSIDigestTypes iSCSIConnectionConfigGetHeaderDigest(iSCSIConnectionConfigRef config)
 {
-    enum iSCSIDigestTypes digest = kiSCSIDigestNone;
+    if(!config)
+        return kiSCSIDigestNone;
+
+    // Use CFIndex to match kCFNumberCFIndexType (8 bytes on arm64) to avoid
+    // buffer overflow when writing to a 4-byte enum variable.
+    CFIndex digest = kiSCSIDigestNone;
     CFNumberRef digestIdx = CFDictionaryGetValue(config,kiSCSIConnectionConfigHeaderDigestKey);
-    CFNumberGetValue(digestIdx,kCFNumberCFIndexType,&digest);
-    return digest;
+    if(digestIdx)
+        CFNumberGetValue(digestIdx,kCFNumberCFIndexType,&digest);
+    return (enum iSCSIDigestTypes)digest;
 }
 
 /*! Sets whether a header digest is enabled in the config object.
@@ -766,10 +777,16 @@ void iSCSIConnectionConfigSetHeaderDigest(iSCSIConnectionConfigRef config,
  *  @return the type of digest to use. */
 enum iSCSIDigestTypes iSCSIConnectionConfigGetDataDigest(iSCSIConnectionConfigRef config)
 {
-    enum iSCSIDigestTypes digest = kiSCSIDigestNone;
+    if(!config)
+        return kiSCSIDigestNone;
+
+    // Use CFIndex to match kCFNumberCFIndexType (8 bytes on arm64) to avoid
+    // buffer overflow when writing to a 4-byte enum variable.
+    CFIndex digest = kiSCSIDigestNone;
     CFNumberRef digestIdx = CFDictionaryGetValue(config,kiSCSIConnectionConfigDataDigestKey);
-    CFNumberGetValue(digestIdx,kCFNumberCFIndexType,&digest);
-    return digest;
+    if(digestIdx)
+        CFNumberGetValue(digestIdx,kCFNumberCFIndexType,&digest);
+    return (enum iSCSIDigestTypes)digest;
 }
 
 /*! Sets whether a data digest is enabled in the config object.

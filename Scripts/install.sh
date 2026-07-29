@@ -51,6 +51,19 @@ for BUILD_PATH in \
     fi
 done
 
+# DEXT builds to Debug-driverkit (DriverKit platform), not Debug
+DEXT_SOURCE_PATH=""
+for DEXT_PATH in \
+            ../DerivedData/Build/Products/Debug-driverkit \
+            ../DerivedData/iSCSIInitiator/Build/Products/Debug-driverkit \
+            ~/Library/Developer/Xcode/DerivedData/iSCSIInitiator*/Build/Products/Debug-driverkit \
+            ; do
+    if [ -d "${DEXT_PATH}" ]; then
+        DEXT_SOURCE_PATH="${DEXT_PATH}"
+        break;
+    fi
+done
+
 if [ X"" == X"${SOURCE_PATH}" ]; then
     echo "Unable to locate iSCSIInitiator binaries; did you run build.sh without errors?"
     exit 1
@@ -63,11 +76,16 @@ sudo chmod -R 755 $KEXT_DST/$KEXT
 sudo chown -R root:wheel $KEXT_DST/$KEXT
 
 # Copy & register DEXT (modern macOS — replaces kext)
-sudo mkdir -p $DEXT_DST
-sudo rm -rf $DEXT_DST/$DEXT
-sudo cp -R $SOURCE_PATH/$DEXT $DEXT_DST/$DEXT
-sudo chmod -R 755 $DEXT_DST/$DEXT
-sudo chown -R root:wheel $DEXT_DST/$DEXT
+if [ -n "${DEXT_SOURCE_PATH}" ] && [ -d "${DEXT_SOURCE_PATH}/${DEXT}.systemextension" ]; then
+    sudo mkdir -p $DEXT_DST
+    sudo rm -rf $DEXT_DST/$DEXT
+    sudo cp -R $DEXT_SOURCE_PATH/$DEXT.systemextension $DEXT_DST/$DEXT
+    sudo chmod -R 755 $DEXT_DST/$DEXT
+    sudo chown -R root:wheel $DEXT_DST/$DEXT
+    echo "DEXT installed from $DEXT_SOURCE_PATH/$DEXT.systemextension"
+else
+    echo "Warning: DEXT not found at $DEXT_SOURCE_PATH/$DEXT.systemextension — skipping"
+fi
 
 if [ "$IS_MODERN_MACOS" -eq 1 ]; then
     echo "Registering System Extension (iSCSI.dext)..."
@@ -121,11 +139,11 @@ fi
 sudo launchctl load $DAEMON_PLIST_DST/$DAEMON_PLIST 2>/dev/null || true
 sudo launchctl start $DAEMON_PLIST 2>/dev/null || true
 
-# Remove (old) configuration file
-sudo rm -f $PREF_DST/$PREF_FILE
 
-# Flush preferences cache
-sudo killall cfprefsd
+# Note: Preferences plist is preserved across installs to avoid
+# losing user configuration (targets, CHAP settings, etc.)
+# Flush preferences cache to ensure fresh reads
+sudo killall cfprefsd 2>/dev/null || true
 
 echo ""
 echo "=== Installation Summary ==="

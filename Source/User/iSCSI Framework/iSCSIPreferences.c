@@ -213,7 +213,7 @@ CFMutableDictionaryRef iSCSIPreferencesCreateTargetDict()
         &kCFTypeDictionaryKeyCallBacks,
         &kCFTypeDictionaryValueCallBacks);
 
-    CFDictionaryAddValue(targetDict,kiSCSIPKAuthCHAPName,(void *)CFSTR(""));
+    CFDictionaryAddValue(targetDict,kiSCSIPKAuthCHAPName,CFSTR(""));
     CFDictionaryAddValue(targetDict,kiSCSIPKAuth,kiSCSIPVAuthNone);
     CFDictionaryAddValue(targetDict,kiSCSIPKAutoLogin,kCFBooleanFalse);
     CFDictionaryAddValue(targetDict,kiSCSIPKPersistent,kCFBooleanTrue);
@@ -392,7 +392,12 @@ UInt32 iSCSIPreferencesGetMaxConnectionsForTarget(iSCSIPreferencesRef preference
 {
     // Get the target information dictionary
     CFMutableDictionaryRef targetDict = iSCSIPreferencesGetTargetDict(preferences,targetIQN,false);
+    if(!targetDict)
+        return kRFC3720_MaxConnections;
+
     CFNumberRef value = CFDictionaryGetValue(targetDict,kiSCSIPKMaxConnections);
+    if(!value)
+        return kRFC3720_MaxConnections;
 
     UInt32 maxConnections = kRFC3720_MaxConnections;
     CFNumberGetValue(value,kCFNumberIntType,&maxConnections);
@@ -406,7 +411,12 @@ enum iSCSIErrorRecoveryLevels iSCSIPreferencesGetErrorRecoveryLevelForTarget(iSC
 {
     // Get the target information dictionary
     CFMutableDictionaryRef targetDict = iSCSIPreferencesGetTargetDict(preferences,targetIQN,false);
+    if(!targetDict)
+        return kRFC3720_ErrorRecoveryLevel;
+
     CFNumberRef value = CFDictionaryGetValue(targetDict,kiSCSIPKErrorRecoveryLevel);
+    if(!value)
+        return kRFC3720_ErrorRecoveryLevel;
 
     enum iSCSIErrorRecoveryLevels errorRecoveryLevel = kRFC3720_ErrorRecoveryLevel;
     CFNumberGetValue(value,kCFNumberIntType,&errorRecoveryLevel);
@@ -555,10 +565,12 @@ enum iSCSIAuthMethods iSCSIPreferencesGetInitiatorAuthenticationMethod(iSCSIPref
     CFStringRef auth = CFDictionaryGetValue(initiatorDict,kiSCSIPKAuth);
     enum iSCSIAuthMethods authMethod = kiSCSIAuthMethodInvalid;
 
-    if(CFStringCompare(auth,kiSCSIPVAuthNone,0) == kCFCompareEqualTo)
-        authMethod = kiSCSIAuthMethodNone;
-    else if(CFStringCompare(auth,kiSCSIPVAuthCHAP,0) == kCFCompareEqualTo)
-        authMethod = kiSCSIAuthMethodCHAP;
+    if(auth) {
+        if(CFStringCompare(auth,kiSCSIPVAuthNone,0) == kCFCompareEqualTo)
+            authMethod = kiSCSIAuthMethodNone;
+        else if(CFStringCompare(auth,kiSCSIPVAuthCHAP,0) == kCFCompareEqualTo)
+            authMethod = kiSCSIAuthMethodCHAP;
+    }
 
     return authMethod;
 }
@@ -577,7 +589,9 @@ CFStringRef iSCSIPreferencesCopyInitiatorCHAPName(iSCSIPreferencesRef preference
 {
     CFMutableDictionaryRef initiatorDict = iSCSIPreferencesGetInitiatorDict(preferences,true);
     CFStringRef name = CFDictionaryGetValue(initiatorDict,kiSCSIPKAuthCHAPName);
-    return CFStringCreateCopy(kCFAllocatorDefault,name);
+    if(name)
+        return CFStringCreateCopy(kCFAllocatorDefault,name);
+    return CFStringCreateCopy(kCFAllocatorDefault,CFSTR(""));
 }
 
 /*! Sets the CHAP secret associated with the initiator.
@@ -853,8 +867,11 @@ CFStringRef iSCSIPreferencesCopyInitiatorAlias(iSCSIPreferencesRef preferences)
     }
     
     // Lookup and copy the initiator alias from the dictionary
+    CFStringRef aliasValue = CFDictionaryGetValue(initiatorDict,kiSCSIPKInitiatorAlias);
+    if(!aliasValue)
+        return CFSTR("");
     CFStringRef initiatorAlias = CFStringCreateCopy(
-        kCFAllocatorDefault,CFDictionaryGetValue(initiatorDict,kiSCSIPKInitiatorAlias));
+        kCFAllocatorDefault,aliasValue);
     
     return initiatorAlias;
 }
@@ -1034,10 +1051,12 @@ void iSCSIPreferencesSetTargetAuthenticationMethod(iSCSIPreferencesRef preferenc
 {
     CFMutableDictionaryRef targetDict = iSCSIPreferencesGetTargetDict(preferences,targetIQN,true);
 
-    if(authMethod == kiSCSIAuthMethodNone)
-        CFDictionarySetValue(targetDict,kiSCSIPKAuth,kiSCSIPVAuthNone);
-    else if(authMethod == kiSCSIAuthMethodCHAP)
-        CFDictionarySetValue(targetDict,kiSCSIPKAuth,kiSCSIPVAuthCHAP);
+    if(targetDict) {
+        if(authMethod == kiSCSIAuthMethodNone)
+            CFDictionarySetValue(targetDict,kiSCSIPKAuth,kiSCSIPVAuthNone);
+        else if(authMethod == kiSCSIAuthMethodCHAP)
+            CFDictionarySetValue(targetDict,kiSCSIPKAuth,kiSCSIPVAuthCHAP);
+    }
 }
 
 /*! Gets the current authentication method used by the target. */
@@ -1045,13 +1064,18 @@ enum iSCSIAuthMethods iSCSIPreferencesGetTargetAuthenticationMethod(iSCSIPrefere
                                                            CFStringRef targetIQN)
 {
     CFMutableDictionaryRef targetDict = iSCSIPreferencesGetTargetDict(preferences,targetIQN,true);
+    if(!targetDict)
+        return kiSCSIAuthMethodNone;
+
     CFStringRef auth = CFDictionaryGetValue(targetDict,kiSCSIPKAuth);
     enum iSCSIAuthMethods authMethod = kiSCSIAuthMethodInvalid;
 
-    if(CFStringCompare(auth,kiSCSIPVAuthNone,0) == kCFCompareEqualTo)
-        authMethod = kiSCSIAuthMethodNone;
-    else if(CFStringCompare(auth,kiSCSIPVAuthCHAP,0) == kCFCompareEqualTo)
-        authMethod = kiSCSIAuthMethodCHAP;
+    if(auth) {
+        if(CFStringCompare(auth,kiSCSIPVAuthNone,0) == kCFCompareEqualTo)
+            authMethod = kiSCSIAuthMethodNone;
+        else if(CFStringCompare(auth,kiSCSIPVAuthCHAP,0) == kCFCompareEqualTo)
+            authMethod = kiSCSIAuthMethodCHAP;
+    }
 
     return authMethod;
 }
@@ -1132,7 +1156,8 @@ void iSCSIPreferencesSetTargetCHAPName(iSCSIPreferencesRef preferences,CFStringR
     CFMutableDictionaryRef targetDict = iSCSIPreferencesGetTargetDict(preferences,targetIQN,true);
 
     // Change CHAP name in iSCSI preferences
-    CFDictionarySetValue(targetDict,kiSCSIPKAuthCHAPName,name);
+    if(targetDict)
+        CFDictionarySetValue(targetDict,kiSCSIPKAuthCHAPName,name);
 }
 
 /*! Copies the CHAP name associated with the target.
@@ -1141,8 +1166,12 @@ void iSCSIPreferencesSetTargetCHAPName(iSCSIPreferencesRef preferences,CFStringR
 CFStringRef iSCSIPreferencesCopyTargetCHAPName(iSCSIPreferencesRef preferences,CFStringRef targetIQN)
 {
     CFMutableDictionaryRef targetDict = iSCSIPreferencesGetTargetDict(preferences,targetIQN,true);
+    if(!targetDict)
+        return CFStringCreateCopy(kCFAllocatorDefault,CFSTR(""));
     CFStringRef name = CFDictionaryGetValue(targetDict,kiSCSIPKAuthCHAPName);
-    return CFStringCreateCopy(kCFAllocatorDefault,name);
+    if(name)
+        return CFStringCreateCopy(kCFAllocatorDefault,name);
+    return CFStringCreateCopy(kCFAllocatorDefault,CFSTR(""));
 }
 
 /*! Adds an iSCSI discovery portal to the list of discovery portals.

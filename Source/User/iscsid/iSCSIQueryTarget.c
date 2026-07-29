@@ -52,17 +52,10 @@ errno_t iSCSISessionLoginSingleQuery(struct iSCSILoginQueryContext * context,
     size_t length = 0;
     iSCSIPDUDataCreateFromDict(textCmd,&data,&length);
 
-    // Debug: log login request
-    fprintf(stderr, "iSCSISessionLoginSingleQuery: sending LoginReq, CSG=%d NSG=%d T=%d, TSIH=%u, ISID=0x%04x, CID=%u, dataLen=%zu\n",
+    fprintf(stderr, "iscsid: sending LoginReq, CSG=%d NSG=%d T=%d, TSIH=%u, ISID=0x%04x, CID=%u, dataLen=%zu\n",
             context->currentStage & 0x3, context->nextStage & 0x3,
             !!(cmd.loginStage & kiSCSIPDULoginTransitFlag),
             context->targetSessionId, context->sessionId, context->connectionId, length);
-    FILE *__dl2 = fopen("/tmp/iscsid-debug.log", "a");
-    if(__dl2) { fprintf(__dl2, "iSCSISessionLoginSingleQuery: sending LoginReq, CSG=%d NSG=%d T=%d, TSIH=%u, ISID=0x%04x, CID=%u, dataLen=%zu, textData=%.*s\n",
-            context->currentStage & 0x3, context->nextStage & 0x3,
-            !!(cmd.loginStage & kiSCSIPDULoginTransitFlag),
-            context->targetSessionId, context->sessionId, context->connectionId, length,
-            (int)length, (const char *)data); fclose(__dl2); }
 
     errno_t error = iSCSIHBAInterfaceSend(context->interface,context->sessionId,context->connectionId,
                                           (iSCSIPDUInitiatorBHS *)&cmd,data,length);
@@ -89,14 +82,9 @@ errno_t iSCSISessionLoginSingleQuery(struct iSCSILoginQueryContext * context,
             // where the class is the high byte and the detail is the low
             *statusCode = ((((UInt16)rsp.statusClass)<<8) | rsp.statusDetail);
 
-            // Debug: log login response status
-            fprintf(stderr, "iSCSISessionLoginSingleQuery: got LoginRsp, CSG=%d NSG=%d T=%d, statusClass=0x%02x statusDetail=0x%02x statusCode=0x%04x\n",
+            fprintf(stderr, "iscsid: got LoginRsp, CSG=%d NSG=%d T=%d, statusClass=0x%02x statusDetail=0x%02x statusCode=0x%04x\n",
                     rsp.loginStage & 0x3, (rsp.loginStage >> 2) & 0x3, !!(rsp.loginStage & kiSCSIPDULoginTransitFlag),
                     rsp.statusClass, rsp.statusDetail, *statusCode);
-            FILE *__dl = fopen("/tmp/iscsid-debug.log", "a");
-            if(__dl) { fprintf(__dl, "iSCSISessionLoginSingleQuery: got LoginRsp, CSG=%d NSG=%d T=%d, statusClass=0x%02x statusDetail=0x%02x statusCode=0x%04x\n",
-                    rsp.loginStage & 0x3, (rsp.loginStage >> 2) & 0x3, !!(rsp.loginStage & kiSCSIPDULoginTransitFlag),
-                    rsp.statusClass, rsp.statusDetail, *statusCode); fclose(__dl); }
 
             if(*statusCode != kiSCSILoginSuccess)
                 break;

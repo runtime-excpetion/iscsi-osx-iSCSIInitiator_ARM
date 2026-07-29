@@ -298,7 +298,7 @@ void iSCSIPDUDataCreateFromDict(CFDictionaryRef textDict,void ** data,size_t * l
 {
     if(!length || !data || !textDict)
         return;
-    
+
     // Apply a function to key-value pairs to determine total byte size of
     // the text commands
     CFIndex cmdByteSize = 0;
@@ -306,16 +306,28 @@ void iSCSIPDUDataCreateFromDict(CFDictionaryRef textDict,void ** data,size_t * l
                               &iSCSIPDUCalculateTextCommandByteSize,
                               &cmdByteSize);
 
-    if((*data = malloc(cmdByteSize)) == NULL) {
+    // RFC 3720: data segment must be padded to 4-byte boundary.
+    // Allocate padded size so the receiver can read the padding bytes
+    // without corrupting the next PDU's BHS read.
+    size_t paddedSize = (size_t)cmdByteSize;
+    paddedSize += (kiSCSIPDUByteAlignment - (paddedSize % kiSCSIPDUByteAlignment)) % kiSCSIPDUByteAlignment;
+
+    if((*data = malloc(paddedSize)) == NULL) {
         *length = 0;
         return;
     }
- 
-    *length = cmdByteSize;
-    
+
+    // Zero out padding bytes at the end
+    if(paddedSize > (size_t)cmdByteSize)
+        memset((char *)*data + cmdByteSize, 0, paddedSize - (size_t)cmdByteSize);
+
+    // The data segment length is the unpadded text size (RFC 3720:
+    // DataSegmentLength does not include padding bytes)
+    *length = (size_t)cmdByteSize;
+
     iSCSIPDUDataSegmentTracker posTracker;
     posTracker.dataSegmentPosition = *data;
-    
+
     // Apply a function to iterate over key-value pairs and add them to this PDU
     CFDictionaryApplyFunction(textDict,&iSCSIPDUPopulateWithTextCommand,&posTracker);
 }

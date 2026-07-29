@@ -411,17 +411,6 @@ errno_t iSCSIAuthNegotiate(iSCSISessionManagerRef managerRef,
     
     iSCSIAuthNegotiateBuildDict(target,initiatorAuth,targetAuth,authCmd);
 
-    // Debug: log auth method being sent
-    CFStringRef debugAuthMethod = CFDictionaryGetValue(authCmd,kRFC3720_Key_AuthMethod);
-    if(debugAuthMethod) {
-        char debugAuthBuf[256];
-        if(CFStringGetCString(debugAuthMethod, debugAuthBuf, sizeof(debugAuthBuf), kCFStringEncodingASCII)) {
-            fprintf(stderr, "iSCSIAuthNegotiate: sending AuthMethod=%s\n", debugAuthBuf);
-            FILE *__dl = fopen("/tmp/iscsid-debug.log", "a");
-            if(__dl) { fprintf(__dl, "iSCSIAuthNegotiate: sending AuthMethod=%s\n", debugAuthBuf); fclose(__dl); }
-        }
-    }
-
     struct iSCSILoginQueryContext context;
     context.interface    = hbaInterface;
     context.sessionId    = sessionId;

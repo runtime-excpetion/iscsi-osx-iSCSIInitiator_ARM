@@ -257,7 +257,14 @@ iSCSIHBAInterfaceRef iSCSIHBAInterfaceCreate(CFAllocatorRef allocator,iSCSIHBANo
     CFMachPortRef notificationPort = NULL;
     
     iSCSIHBAInterfaceRef interface = CFAllocatorAllocate(allocator,sizeof(struct __iSCSIHBAInterface),0);
-    
+    if(!interface)
+        return NULL;
+
+    // Zero-initialize all fields (dextMode, dextIPC, etc.)
+    // Without this, dextMode could be garbage and cause the DEXT path
+    // to be taken even when no DEXT is loaded.
+    memset(interface, 0, sizeof(struct __iSCSIHBAInterface));
+
 	// Create a dictionary to match iSCSIkext
 	CFMutableDictionaryRef matchingDict = NULL;
 	matchingDict = IOServiceMatching(kiSCSIVirtualHBA_IOClassName);
@@ -991,15 +998,11 @@ IOReturn iSCSIHBAInterfaceSend(iSCSIHBAInterfaceRef interface,
                                        sizeof(iSCSIPDUInitiatorBHS),NULL,NULL);
 
     if(result != kIOReturnSuccess) {
-        fprintf(stderr, "iSCSIHBAInterfaceSend: SendBHS failed result=0x%x (%d)\n", result, result);
         return result;
     }
 
     result = IOConnectCallMethod(interface->connect,kiSCSISendData,inputs,inputCnt,
                                                data,length,NULL,NULL,NULL,NULL);
-    if(result != kIOReturnSuccess) {
-        fprintf(stderr, "iSCSIHBAInterfaceSend: SendData failed result=0x%x (%d), length=%zu\n", result, result, length);
-    }
     return result;
 }
 
@@ -1026,11 +1029,13 @@ IOReturn iSCSIHBAInterfaceReceive(iSCSIHBAInterfaceRef interface,
     if(interface->dextMode) {
         uint8_t dextId = dextSessionIdFromId(sessionId);
         DextSessionEntry *entry = dextFindSession(interface, dextId);
-        if(!entry)
+        if(!entry) {
             return kIOReturnBadArgument;
+        }
         int sock = dextConnectionSocket(entry, connectionId);
-        if(sock < 0)
+        if(sock < 0) {
             return kIOReturnNotFound;
+        }
 
         // Set a receive timeout for login phase (30 seconds)
         struct timeval tv = { .tv_sec = 30, .tv_usec = 0 };
@@ -1039,8 +1044,9 @@ IOReturn iSCSIHBAInterfaceReceive(iSCSIHBAInterfaceRef interface,
         // Receive BHS (use MSG_WAITALL to ensure full 48-byte read)
         size_t bhsLen = sizeof(iSCSIPDUTargetBHS);
         ssize_t received = recv(sock, bhs, bhsLen, MSG_WAITALL);
-        if(received != (ssize_t)bhsLen)
+        if(received != (ssize_t)bhsLen) {
             return kIOReturnIOError;
+        }
 
         // Calculate data segment length from BHS
         *length = iSCSIPDUGetDataSegmentLength((iSCSIPDUCommonBHS *)bhs);
@@ -1059,8 +1065,9 @@ IOReturn iSCSIHBAInterfaceReceive(iSCSIHBAInterfaceRef interface,
         // Allocate and receive padded data segment
         // iSCSIPDUDataCreate already rounds up to 4-byte alignment
         *data = iSCSIPDUDataCreate(*length);
-        if(!*data)
+        if(!*data) {
             return kIOReturnIOError;
+        }
 
         received = recv(sock, *data, paddedLen, MSG_WAITALL);
         if(received != (ssize_t)paddedLen) {
@@ -1070,6 +1077,7 @@ IOReturn iSCSIHBAInterfaceReceive(iSCSIHBAInterfaceRef interface,
         return kIOReturnSuccess;
     }
 
+    // KEXT path
     // Setup input scalar array
     const UInt32 inputCnt = 2;
     UInt64 inputs[] = {sessionId,connectionId};
@@ -1084,28 +1092,26 @@ IOReturn iSCSIHBAInterfaceReceive(iSCSIHBAInterfaceRef interface,
                                  NULL,NULL,bhs,&bhsLength);
 
     if(result != kIOReturnSuccess) {
-        fprintf(stderr, "iSCSIHBAInterfaceReceive: RecvBHS failed result=0x%x (%d)\n", result, result);
         return result;
     }
-    
+
     // Determine how much data to allocate for the data buffer
     *length = iSCSIPDUGetDataSegmentLength((iSCSIPDUCommonBHS *)bhs);
-    
+
     // If no data, were done at this point
     if(*length == 0)
         return 0;
-    
+
     *data = iSCSIPDUDataCreate(*length);
-        
+
     if(*data == NULL)
         return kIOReturnIOError;
-    
+
     // Call kernel method to get data from a receive buffer
     result = IOConnectCallMethod(interface->connect,kiSCSIRecvData,inputs,inputCnt,NULL,0,
                                  NULL,NULL,*data,length);
 
     if(result != kIOReturnSuccess) {
-        fprintf(stderr, "iSCSIHBAInterfaceReceive: RecvData failed result=0x%x (%d), length=%zu\n", result, result, *length);
         iSCSIPDUDataRelease(data);
     }
     
