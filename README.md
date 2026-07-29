@@ -1,3 +1,4 @@
+因为本人不是苹果开发者，没有对应证书，故无法编译KEXT，进行后续操作。其他人可以基于本项目进行编译。
 **Update 28 February 2023** : Apple has not provided a mechanism for opening sockets from within system extensions (if you know of one do let me know). The porting of this initiator away from kernel extensions is facilitated by `IOUserSCSIParallelInterfaceController` in a system extension, but the opening / management of sockets are required for communication. Without a means to do so, re-architecture of the project is required (for which I do not have the bandwidth). Such an architecture would likely result in a performance penality. It's not clear what, if any, replacement Apple plans for the `kpi_socket` interface (in userland / System Extensions).
 
 **Update 27 March 2021** : Further development is on hold until DriverKit 20.4 (Beta) is released, with support for `IOUserSCSIParallelInterfaceController`. This software will ultimately transition away from kernel extensions.
